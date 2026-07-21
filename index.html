@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Nexplore Fall Placements — TX/FL/GA Live Sites Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #0f1420;
+    --panel: #161d2e;
+    --panel2: #1d2540;
+    --border: #2a3450;
+    --text: #e8ecf5;
+    --muted: #93a0bf;
+    --accent: #4f8cff;
+    --open: #ff6b5e;
+    --filled: #37c977;
+    --mix: #ffb545;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    padding: 20px 28px 16px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #141a2c, #0f1420);
+  }
+  header h1 {
+    margin: 0 0 4px;
+    font-size: 22px;
+    font-weight: 700;
+  }
+  header p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .stats {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+  .stat b { font-size: 16px; display:block; }
+  .stat.open b { color: var(--open); }
+  .stat.filled b { color: var(--filled); }
+  .stat.sites b { color: var(--accent); }
+  .stat.regions b { color: var(--mix); }
+
+  #map {
+    height: 560px;
+    width: 100%;
+    border-bottom: 1px solid var(--border);
+  }
+  .legend {
+    padding: 10px 28px;
+    background: var(--panel);
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    font-size: 12px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .legend .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+  .legend .dot.open { background: var(--open); }
+  .legend .dot.mix { background: var(--mix); }
+  .legend .dot.filled { background: var(--filled); }
+
+  .controls {
+    padding: 14px 28px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .controls input, .controls select {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .controls input { flex: 1; min-width: 180px; }
+
+  main { padding: 8px 28px 40px; }
+  .region-block {
+    margin-top: 26px;
+  }
+  .region-title {
+    font-size: 17px;
+    font-weight: 700;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+  }
+  .region-title .state-tag {
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--accent);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+  .region-title .count {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .site-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 14px;
+  }
+  .site-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .site-card.no-open { opacity: 0.55; }
+  .site-name {
+    font-weight: 700;
+    font-size: 14.5px;
+    margin-bottom: 2px;
+  }
+  .site-loc {
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+  .class-row {
+    font-size: 12.5px;
+    padding: 5px 0;
+    border-top: 1px dashed var(--border);
+  }
+  .class-row:first-of-type { border-top: none; }
+  .class-row .prog { font-weight: 600; }
+  .class-row.filled { color: var(--muted); }
+  .badge {
+    display:inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 5px;
+    margin-left: 6px;
+  }
+  .badge.open { background: rgba(255,107,94,0.18); color: var(--open); }
+  .badge.filled { background: rgba(55,201,119,0.18); color: var(--filled); }
+  .no-open-note { font-size: 12px; color: var(--muted); font-style: italic; }
+  .leaflet-popup-content-wrapper { background: var(--panel); color: var(--text); border-radius: 10px; }
+  .leaflet-popup-tip { background: var(--panel); }
+  .popup-title { font-weight:700; font-size:13px; margin-bottom:2px; }
+  .popup-addr { font-size:11px; color: var(--muted); margin-bottom:6px; }
+  .popup-class { font-size:11.5px; padding:2px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Nexplore Fall Placements — Live Site Map (TX / FL / GA)</h1>
+  <p>Pulled live from the sandbox placement system · July 21, 2026 · All active classes, open and filled</p>
+  <div class="stats">
+    <div class="stat sites"><b>51</b>sites</div>
+    <div class="stat regions"><b>26</b>regions</div>
+    <div class="stat open"><b>90</b>open placements</div>
+    <div class="stat filled"><b>60</b>filled classes</div>
+  </div>
+</header>
+
+<div id="map"></div>
+<div class="legend">
+  <span><span class="dot open"></span>Has open placement(s)</span>
+  <span><span class="dot mix"></span>Mixed program (some open)</span>
+  <span><span class="dot filled"></span>Fully staffed</span>
+  <span style="margin-left:auto;">Click a pin for site + class detail</span>
+</div>
+
+<div class="controls">
+  <input id="searchBox" type="text" placeholder="Search by site, city, program, or region..." oninput="renderList()">
+  <select id="stateFilter" onchange="renderList()">
+    <option value="">All States</option>
+    <option value="TX">Texas</option>
+    <option value="FL">Florida</option>
+    <option value="GA">Georgia</option>
+  </select>
+  <select id="statusFilter" onchange="renderList()">
+    <option value="">All Sites</option>
+    <option value="open">Only sites with open placements</option>
+    <option value="filled">Only fully-staffed sites</option>
+  </select>
+</div>
+
+<main id="mainList"></main>
+
+<script>
+const DATA = [{"id": "3185", "name": "Grandview Preparatory School - In School Programs", "state": "FL", "region": "Boca Raton", "city": "Boca Raton", "address": "336 Spanish River Boulevard NW", "zip": "33431", "lat": 26.3859568, "lon": -80.0888826, "classes": [{"program": "RoboCoding", "course": "*Course (DELETE)", "instructor": "Prachi Gupta", "status": "filled"}, {"program": "Structural Engineering", "course": "Bridges & Skyscrapers", "instructor": "Prachi Gupta", "status": "filled"}, {"program": "Structural Engineering", "course": "Bridges & Skyscrapers", "instructor": "Shelli Betzalel", "status": "filled"}, {"program": "Strawbees", "course": "Course", "instructor": "Shelli Betzalel", "status": "filled"}, {"program": "Lego Robotics", "course": "LEGO® Robotics – SPIKE™ Essential", "instructor": "Shelli Betzalel", "status": "filled"}, {"program": "Robotics with Ozobot", "course": "Course", "instructor": "Shelli Betzalel", "status": "filled"}]}, {"id": "3069", "name": "Grandview Preparatory School - After School Programs", "state": "FL", "region": "Boca Raton", "city": "Boca Raton", "address": "336 Spanish River Boulevard NW", "zip": "33431", "lat": 26.3859568, "lon": -80.0888826, "classes": [{"program": "Makers Club", "course": "Course", "instructor": "Prachi Gupta", "status": "filled"}, {"program": "3D Printing", "course": "Start+", "instructor": "Shelli Betzalel", "status": "filled"}]}, {"id": "2509", "name": "Prime Time / DeLuca - Milagro Center", "state": "FL", "region": "Delray Beach", "city": "Delray Beach", "address": "695 Auburn Avenue", "zip": "33444", "lat": 26.4491661, "lon": -80.0874064, "classes": [{"program": "Robotics with Edison", "course": "EdBlocks", "instructor": "Nakira Burton", "status": "filled"}]}, {"id": "2910", "name": "Prime Time - DeLuca - Palm Beach Preschool", "state": "FL", "region": "Lake Worth Beach", "city": "Lake Worth Beach", "address": "3271 Grace Ave", "zip": "33461", "lat": 26.6276818, "lon": -80.1085105, "classes": [{"program": "Robotics with Edison", "course": "EdBlocks", "instructor": "Nakira Burton", "status": "filled"}]}, {"id": "3103", "name": "St. Agatha Catholic School", "state": "FL", "region": "Miami", "city": "Miami", "address": "1125 SW 107th Avenue", "zip": "33174", "lat": 25.7589323, "lon": -80.3682026, "classes": [{"program": "3D Printing", "course": "Create+", "instructor": null, "status": "open"}, {"program": "Energize", "course": "Course", "instructor": null, "status": "open"}, {"program": "Chess", "course": "Course", "instructor": null, "status": "open"}, {"program": "Pottery", "course": "Core", "instructor": "Artur Bejkollari", "status": "filled"}, {"program": "Music", "course": "Guitar", "instructor": "Beatriz Santiago", "status": "filled"}]}, {"id": "305", "name": "North Broward Preparatory School", "state": "FL", "region": "North Broward", "city": "Coconut Creek", "address": "7600 Lyons Rd", "zip": "33073", "lat": 26.326333, "lon": -80.1827401, "classes": [{"program": "Space Explorers", "course": "Course", "instructor": null, "status": "open"}, {"program": "3D Printing", "course": "Start+", "instructor": null, "status": "open"}, {"program": "Pottery", "course": "Core", "instructor": "Artur Bejkollari", "status": "filled"}, {"program": "Claymation", "course": "Course", "instructor": "Artur Bejkollari", "status": "filled"}, {"program": "Little Detectives", "course": "Course", "instructor": "Nayra Pacheco", "status": "filled"}, {"program": "3D Printing", "course": "Start+", "instructor": "Nayra Pacheco", "status": "filled"}]}, {"id": "35", "name": "Hillel NMB", "state": "FL", "region": "North Miami", "city": "North Miami Beach", "address": "19000 NE 25th Avenue", "zip": "33180", "lat": 25.9514363, "lon": -80.1519947, "classes": [{"program": "Finance", "course": "Course", "instructor": null, "status": "open"}, {"program": "BrickLAB", "course": "Magic Beans", "instructor": null, "status": "open"}, {"program": "Gardening", "course": "Sunshine & Soil", "instructor": null, "status": "open"}, {"program": "Speech & Debate", "course": "Course", "instructor": null, "status": "open"}, {"program": "Fashion", "course": "Jewelry", "instructor": null, "status": "open"}, {"program": "Wacky Science", "course": "Course", "instructor": null, "status": "open"}, {"program": "Art Rods", "course": "Creations", "instructor": null, "status": "open"}, {"program": "Makers Club", "course": "Course", "instructor": null, "status": "open"}, {"program": "Magic", "course": "Classic", "instructor": "Gabriela Rosenthal", "status": "filled"}, {"program": "Little Doctors", "course": "Course", "instructor": "Gabriela Rosenthal", "status": "filled"}, {"program": "Zumba", "course": "Kids", "instructor": "Louise Ruiz", "status": "filled"}, {"program": "Zumba", "course": "Kids", "instructor": "Louise Ruiz", "status": "filled"}, {"program": "Fashion", "course": "Design A", "instructor": "Myriam Pierre-Charles", "status": "filled"}, {"program": "3D Printing", "course": "Start+", "instructor": "Shelli Betzalel", "status": "filled"}]}, {"id": "3039", "name": "Trinity Preparatory School", "state": "FL", "region": "Orlando", "city": "Winter Park", "address": "5700 Trinity Prep Lane,", "zip": "32792", "lat": 28.6115841, "lon": -81.2726907, "classes": [{"program": "Business", "course": "Young Sharks", "instructor": null, "status": "open"}, {"program": "3D Printing", "course": "Create+", "instructor": null, "status": "open"}, {"program": "Cooking & Nutrition", "course": "Course", "instructor": null, "status": "open"}, {"program": "Web Design", "course": "Course", "instructor": null, "status": "open"}, {"program": "Podcasting", "course": "Course", "instructor": null, "status": "open"}]}, {"id": "3264", "name": "Prime Time / ELO - Western Academy Charter", "state": "FL", "region": "Palm Beach", "city": "Loxahatchee", "address": "12031 Southern Blvd", "zip": "33470", "lat": 26.6840141, "lon": -80.248444, "classes": [{"program": "Wacky Science", "course": "Course", "instructor": null, "status": "open"}]}, {"id": "3154", "name": "Prime Time / DeLuca - Jupiter Elementary, Boys & Girls Club", "state": "FL", "region": "Palms Beach", "city": "Jupiter", "address": "200 S. Loxahatchee Drive", "zip": "33458", "lat": 26.931151, "lon": -80.099906, "classes": [{"program": "Wacky Science", "course": "Course", "instructor": "Janelle Fulford", "status": "filled"}]}, {"id": "2551", "name": "R Club - Tyrone Middle School", "state": "FL", "region": "Pinellas County", "city": "Saint Petersburgh", "address": "2375 66th St. N", "zip": "33710", "lat": 27.7925774, "lon": -82.7283698, "classes": [{"program": "3D Printing", "course": "Create+", "instructor": null, "status": "open"}]}, {"id": "3045", "name": "Prime Time /PBC Youth Services - Atkins Tender Loving Care", "state": "FL", "region": "Riviera Beach", "city": "Riviera Beach", "address": "2721 R J Hendley", "zip": "33404", "lat": 26.7804895, "lon": -80.0682726, "classes": [{"program": "Wacky Science", "course": "Course", "instructor": "Jonathan Davis", "status": "filled"}]}, {"id": "3060", "name": "Prime Time / ELO - Holistic Learning Academy", "state": "FL", "region": "Riviera Beach", "city": "Riviera Beach", "address": "1297 W 34th St", "zip": "33404", "lat": 26.789845, "lon": -80.0742062, "classes": [{"program": "Wacky Science", "course": "Course", "instructor": "Nasomie James", "status": "filled"}]}, {"id": "458", "name": "Beth Emet School", "state": "FL", "region": "South Broward", "city": "Cooper City", "address": "4807 S Flamingo Rd", "zip": "33330", "lat": 26.0616671, "lon": -80.3136835, "classes": [{"program": "Volleyball", "course": "Course", "instructor": null, "status": "open"}, {"program": "Pottery", "course": "Core + Wheel", "instructor": null, "status": "open"}, {"program": "Robotics with Ozobot", "course": "Course", "instructor": null, "status": "open"}, {"program": "Coding with Scratch", "course": "Course", "instructor": null, "status": "open"}, {"program": "Fencing", "course": "Course", "instructor": null, "status": "open"}, {"program": "Little Detectives", "course": "Course", "instructor": null, "status": "open"}, {"program": "Pottery", "course": "Passport", "instructor": null, "status": "open"}, {"program": "3D Printing", "course": "Create+", "instructor": null, "status": "open"}, {"program": "Cooking & Nutrition", "course": "Course", "instructor": null, "status": "open"}]}, {"id": "91", "name": "Nova University School", "state": "FL", "region": "South Broward", "city": "Davie", "address": "3375 SW 75 Avenue", "zip": "33314", "lat": 26.0788018, "lon": -80.2435108, "classes": [{"program": "Multiple Programs", "course": "", "instructor": "Gabriela Rosenthal", "status": "filled"}]}, {"id": "395", "name": "City of Coral Gables", "state": "FL", "region": "South Miami", "city": "Coral Gables", "address": "405 University Drive", "zip": "33134", "lat": 25.7416595, "lon": -80.2640902, "classes": [{"program": "Multiple Programs", "course": "", "instructor": "Inceni Cabrera", "status": "filled"}]}, {"id": "573", "name": "YMCA of the Suncoast - Tarpon Springs Middle School", "state": "FL", "region": "Tampa", "city": "Tarpon Springs", "address": "501 N Florida Ave,", "zip": "34689", "lat": 28.149594, "lon": -82.781341, "classes": [{"program": "Podcasting", "course": "Course", "instructor": "Robyn Kolodziej", "status": "filled"}]}, {"id": "3155", "name": "Prime Time / DeLuca - BGC Wellington- Neil S Hersch", "state": "FL", "region": "Wellington", "city": "Wellington", "address": "1080 Wellington Terrace", "zip": "33414", "lat": 28.6434268, "lon": -81.3460395, "classes": [{"program": "Wacky Science", "course": "Course", "instructor": "Vanessa taylor", "status": "filled"}]}, {"id": "935", "name": "City of Hialeah - Henry H. Filer Middle School", "state": "FL", "region": "West Miami", "city": "Hialeah", "address": "531 W. 29th St.", "zip": "33012", "lat": 25.8484832, "lon": -80.2933399, "classes": [{"program": "Lego Robotics", "course": "LEGO® Robotics – SPIKE™ Essential", "instructor": null, "status": "open"}]}, {"id": "556", "name": "City of Hialeah - Hialeah Educational Academy", "state": "FL", "region": "West Miami", "city": "Hialeah", "address": "2590 W 76th Street", "zip": "33016", "lat": 25.8912758, "lon": -80.3356081, "classes": [{"program": "Lego Robotics", "course": "LEGO® Robotics – SPIKE™ Essential", "instructor": null, "status": "open"}]}, {"id": "3206", "name": "City of Hialeah - Middle School", "state": "FL", "region": "West Miami", "city": "Hialeah", "address": "6027 E 7th Ave.", "zip": "33013", "lat": 25.8775107, "lon": -80.2682417, "classes": [{"program": "Lego Robotics", "course": "LEGO® Robotics – SPIKE™ Essential", "instructor": null, "status": "open"}]}, {"id": "509", "name": "City of Hialeah - Wilde Community Center", "state": "FL", "region": "West Miami", "city": "Hialeah", "address": "1701 W 53rd Terrace", "zip": "33012", "lat": 25.8712422, "lon": -80.3181932, "classes": [{"program": "Martial Arts", "course": "Course", "instructor": "Flavio Carvalho", "status": "filled"}, {"program": "Games", "course": "Grades K-5 - Logic & Reasoning", "instructor": "Sara Grinbaum", "status": "filled"}]}, {"id": "358", "name": "City of Hialeah - Walker", "state": "FL", "region": "West Miami", "city": "Hialeah", "address": "800 W 29th St.", "zip": "33013", "lat": 25.8476703, "lon": -80.2985343, "classes": [{"program": "Games", "course": "Grades K-5 - Logic & Reasoning", "instructor": "Gabriela Rosenthal", "status": "filled"}]}, {"id": "359", "name": "City of Hialeah - Babcock Park", "state": "FL", "region": "West Miami", "city": "Hialeah", "address": "651 E 4th Ave", "zip": "33010", "lat": 25.828181, "lon": -80.2715334, "classes": [{"program": "Games", "course": "Grades K-5 - Logic & Reasoning", "instructor": "Gabriela Rosenthal", "status": "filled"}]}, {"id": "360", "name": "City of Hialeah - Goodlet Park", "state": "FL", "region": "West Miami", "city": "Hialeah", "address": "900 W 44th place", "zip": "33012", "lat": 25.8623883, "lon": -80.3030658, "classes": [{"program": "Games", "course": "Grades K-5 - Logic & Reasoning", "instructor": "Maria Elena Ruiz", "status": "filled"}]}, {"id": "74", "name": "City of Hialeah - Slade", "state": "FL", "region": "West Miami", "city": "Hialeah", "address": "2501 W 74th St", "zip": "33016", "lat": 25.8902319, "lon": -80.3343769, "classes": [{"program": "Games", "course": "Grades K-5 - Logic & Reasoning", "instructor": "Nancy Bonise Charlemond", "status": "filled"}]}, {"id": "3056", "name": "Prime Time / ELO -  Del Prado Elementary School", "state": "FL", "region": "West Palm Beach", "city": "Boca Raton", "address": "7900 Del Prado N", "zip": "33433", "lat": 26.3586885, "lon": -80.0830984, "classes": [{"program": "Wacky Science", "course": "Course", "instructor": null, "status": "open"}]}, {"id": "3041", "name": "Prime Time / DeLuca - Great Expectations Childcare", "state": "FL", "region": "West Palm Beach", "city": "West Palm Beach", "address": "4180 Gun Club Rd", "zip": "33406", "lat": 26.6734369, "lon": -80.1067765, "classes": [{"program": "Wacky Science", "course": "Course", "instructor": "Anaruth Pamela Marroquin", "status": "filled"}]}, {"id": "2908", "name": "Prime Time / DeLuca -  Inspiring Kids Academy  W.P.B.", "state": "FL", "region": "West Palm Beach", "city": "West Palm Beach", "address": "1679 Skees Rd", "zip": "33411", "lat": 26.7022035, "lon": -80.1576979, "classes": [{"program": "Makers Club", "course": "Course", "instructor": "Jonathan Davis", "status": "filled"}]}, {"id": "2956", "name": "Prime Time /PBC Youth Services - Epic Kids Learning Academy", "state": "FL", "region": "West Palm Beach", "city": "West Palm Beach", "address": "1515 Forum Pl", "zip": "33401", "lat": 26.7267442, "lon": -80.0793187, "classes": [{"program": "Makers Club", "course": "Course", "instructor": "Jonathan Davis", "status": "filled"}]}, {"id": "595", "name": "Prime Time / ELO - Adopt A Family of Palm Beaches, Inc.", "state": "FL", "region": "West Palm Beach", "city": "Lake Worth", "address": "1712 2nd Ave. North", "zip": "33460", "lat": 26.6181756, "lon": -80.0654446, "classes": [{"program": "Wacky Science", "course": "Course", "instructor": "Nakira Burton", "status": "filled"}]}, {"id": "2878", "name": "Prime Time / DeLuca - City of Boynton Beach", "state": "FL", "region": "West Palm Beach", "city": "Boynton Beach", "address": "225 N.W. 12th Ave.", "zip": "33435", "lat": 25.8867754, "lon": -80.3076922, "classes": [{"program": "Makers Club", "course": "Course", "instructor": "Nasomie James", "status": "filled"}]}, {"id": "1048", "name": "Prime Time / DeLuca - Forest Park Elementary", "state": "FL", "region": "West Palm Beach", "city": "Boynton Beach", "address": "1201 SW 3rd St.", "zip": "33435", "lat": 26.5168134, "lon": -80.0707906, "classes": [{"program": "Wacky Science", "course": "Course", "instructor": "Nasomie James", "status": "filled"}]}, {"id": "3108", "name": "Mount Vernon School", "state": "GA", "region": "Atlanta", "city": "Atlanta", "address": "510 Mount Vernon Hwy NE", "zip": "30328", "lat": 33.9407514, "lon": -84.3615589, "classes": [{"program": "RoboCoding", "course": "Intro to Cubelets (PreK-2)", "instructor": null, "status": "open"}, {"program": "RoboCoding", "course": "Intro to Cubelets (PreK-2)", "instructor": null, "status": "open"}, {"program": "Build a Bot", "course": "AmazBots", "instructor": null, "status": "open"}, {"program": "3D Printing", "course": "Start+", "instructor": "Crystal Williams", "status": "filled"}, {"program": "3D Printing", "course": "Start+", "instructor": "Crystal Williams", "status": "filled"}]}, {"id": "3044", "name": "Brookhaven Innovation Academy", "state": "GA", "region": "Atlanta", "city": "Norcross", "address": "186 Hunter St NW,", "zip": "30071", "lat": 33.9374272, "lon": -84.2214214, "classes": [{"program": "Basketball", "course": "Course", "instructor": null, "status": "open"}, {"program": "RoboCoding", "course": "Cubelets (3-5)", "instructor": null, "status": "open"}, {"program": "Business", "course": "Young Sharks", "instructor": null, "status": "open"}, {"program": "Gardening", "course": "Sunshine & Soil", "instructor": null, "status": "open"}, {"program": "Gardening", "course": "Sunshine & Soil", "instructor": null, "status": "open"}, {"program": "Basketball", "course": "Course", "instructor": null, "status": "open"}, {"program": "Flag Football", "course": "Course", "instructor": null, "status": "open"}, {"program": "Cooking & Nutrition", "course": "Course", "instructor": null, "status": "open"}, {"program": "Flight & Aerodynamics", "course": "Take Flight", "instructor": null, "status": "open"}, {"program": "Little Doctors", "course": "Course", "instructor": null, "status": "open"}, {"program": "Pottery", "course": "Core + Painting", "instructor": "Crystal Williams", "status": "filled"}]}, {"id": "3030", "name": "Eaton Academy", "state": "GA", "region": "Atlanta", "city": "Roswell", "address": "1000 Old Roswell Lakes Pkwy", "zip": "30076", "lat": 34.0342393, "lon": -84.3370035, "classes": [{"program": "Chess", "course": "Course", "instructor": null, "status": "open"}, {"program": "Chess", "course": "Course", "instructor": null, "status": "open"}, {"program": "Pottery", "course": "Core", "instructor": "Crystal Williams", "status": "filled"}, {"program": "Pottery", "course": "Core", "instructor": "Crystal Williams", "status": "filled"}, {"program": "Lego Robotics", "course": "LEGO® Robotics – SPIKE™ Essential", "instructor": "Crystal Williams", "status": "filled"}, {"program": "3D Printing", "course": "Create+", "instructor": "Crystal Williams", "status": "filled"}]}, {"id": "3090", "name": "Greater Atlanta Christian School", "state": "GA", "region": "Atlanta", "city": "Norcross", "address": "1575 Indian Trail Lilburn Rd NW", "zip": "30093", "lat": 33.8963096, "lon": -84.140187, "classes": [{"program": "3D Printing", "course": "Start+", "instructor": null, "status": "open"}, {"program": "Nature Watch", "course": "Course 1 - Wild Wonders", "instructor": null, "status": "open"}]}, {"id": "2841", "name": "The Lovett School", "state": "GA", "region": "Fulton County", "city": "Atlanta", "address": "4075 Paces Ferry Road, N.W.", "zip": "30327", "lat": 33.8586306, "lon": -84.4472302, "classes": [{"program": "Art Rods", "course": "Creations", "instructor": null, "status": "open"}, {"program": "Robotics with Ozobot", "course": "Course", "instructor": null, "status": "open"}, {"program": "Strawbees", "course": "Course", "instructor": null, "status": "open"}, {"program": "Wacky Science", "course": "Little Scientists", "instructor": null, "status": "open"}]}, {"id": "3259", "name": "The Girl's School", "state": "TX", "region": "Austin", "city": "Austin", "address": "2007 McCall Rd", "zip": "78703", "lat": 30.2711286, "lon": -97.7436995, "classes": [{"program": "Podcasting", "course": "Course", "instructor": null, "status": "open"}, {"program": "Music", "course": "Boomwackers", "instructor": null, "status": "open"}, {"program": "3D Printing", "course": "Create+", "instructor": null, "status": "open"}, {"program": "Magic", "course": "Classic", "instructor": null, "status": "open"}, {"program": "Gardening", "course": "Hydroponics", "instructor": null, "status": "open"}, {"program": "Pottery", "course": "Core", "instructor": "Cinthia Herrera", "status": "filled"}]}, {"id": "3101", "name": "Austin Parks and Recreation - Virginia L Brown Recreation Center", "state": "TX", "region": "Austin", "city": "Austin", "address": "7500 Blessing Ave", "zip": "78752", "lat": 30.332052, "lon": -97.6937228, "classes": [{"program": "Multiple Programs", "course": "", "instructor": "Guilherme Torres", "status": "filled"}]}, {"id": "3100", "name": "Austin Parks and Recreation - South Austin Recreation Center", "state": "TX", "region": "Austin", "city": "Austin", "address": "1100 Cumberland Rd", "zip": "78704", "lat": 30.2415445, "lon": -97.768599, "classes": [{"program": "Multiple Programs", "course": "", "instructor": "Guilherme Torres", "status": "filled"}]}, {"id": "2920", "name": "Pinnacle Montessori of Melissa", "state": "TX", "region": "Collin County", "city": "Melissa", "address": "2233 Sam Rayburn Hwy", "zip": "75454", "lat": 33.2771965, "lon": -96.5717223, "classes": [{"program": "Wacky Science", "course": "Course", "instructor": null, "status": "open"}, {"program": "RoboCoding", "course": "Intro to Cubelets (PreK-2)", "instructor": null, "status": "open"}, {"program": "Strawbees", "course": "Course", "instructor": null, "status": "open"}, {"program": "3D Printing", "course": "Start+", "instructor": null, "status": "open"}]}, {"id": "55", "name": "Parish Episcopal School", "state": "TX", "region": "Dallas", "city": "Dallas", "address": "14115 Hillcrest Road", "zip": "75254", "lat": 32.9409065, "lon": -96.7875657, "classes": [{"program": "Energize", "course": "Course", "instructor": null, "status": "open"}, {"program": "Pottery", "course": "Core", "instructor": null, "status": "open"}, {"program": "Nature Watch", "course": "Course 1 - Wild Wonders", "instructor": null, "status": "open"}, {"program": "Little Doctors", "course": "Course", "instructor": "Ana Maria Gutierrez", "status": "filled"}]}, {"id": "2921", "name": "White Rock Montessori", "state": "TX", "region": "Dallas", "city": "Dallas", "address": "1601 Oates Dr.", "zip": "75228", "lat": 32.822382, "lon": -96.6872513, "classes": [{"program": "Drones", "course": "Voyage", "instructor": null, "status": "open"}, {"program": "Visual Arts", "course": "Famous Artist", "instructor": "Ana Maria Gutierrez", "status": "filled"}, {"program": "Dough", "course": "Little Dough-nuts", "instructor": "Donna Garcia", "status": "filled"}]}, {"id": "2513", "name": "Vanguard Prep SchoolESE", "state": "TX", "region": "Dallas County", "city": "Dallas", "address": "4240 Sigma Road", "zip": "75244", "lat": 32.9365429, "lon": -96.8379412, "classes": [{"program": "ESE Energize", "course": "Course", "instructor": null, "status": "open"}, {"program": "ESE Hip Hop", "course": "Course", "instructor": null, "status": "open"}, {"program": "ESE Esports", "course": "Game On!", "instructor": null, "status": "open"}, {"program": "ESE Drama", "course": "Essentials", "instructor": "Ana Maria Gutierrez", "status": "filled"}, {"program": "ESE Chess", "course": "Course", "instructor": "WIlliam Kocak", "status": "filled"}]}, {"id": "2561", "name": "The Compass School of Texas", "state": "TX", "region": "Dallas County", "city": "Dallas", "address": "5414 W. Northwest Highway", "zip": "75220", "lat": 32.8650813, "lon": -96.8186836, "classes": [{"program": "Martial Arts", "course": "Course", "instructor": null, "status": "open"}, {"program": "Martial Arts", "course": "Course", "instructor": null, "status": "open"}, {"program": "Podcasting", "course": "Course", "instructor": "Antoinette Bermudes", "status": "filled"}, {"program": "Drama", "course": "Improv", "instructor": "Antoinette Bermudes", "status": "filled"}, {"program": "Fencing", "course": "Course", "instructor": "David Ramirez", "status": "filled"}]}, {"id": "3149", "name": "Montessori Reggio Academy", "state": "TX", "region": "Fort Bend County", "city": "Sugar Land", "address": "16103 Lexington Blvd #100", "zip": "77479", "lat": 29.593314, "lon": -95.6182029, "classes": [{"program": "Choir", "course": "Course", "instructor": null, "status": "open"}, {"program": "Pottery", "course": "Core", "instructor": null, "status": "open"}, {"program": "Little Detectives", "course": "Course", "instructor": null, "status": "open"}, {"program": "3D Printing", "course": "Start+", "instructor": null, "status": "open"}, {"program": "Little Doctors", "course": "Course", "instructor": "Zoha Wamiq", "status": "filled"}]}, {"id": "2521", "name": "Robert M. Beren Academy", "state": "TX", "region": "Harris County", "city": "Houston", "address": "11333 Cliffwood Drive", "zip": "77035", "lat": 29.6534893, "lon": -95.453226, "classes": [{"program": "Energize", "course": "Course", "instructor": null, "status": "open"}, {"program": "Zumba", "course": "Kids", "instructor": null, "status": "open"}, {"program": "Basketball", "course": "Course", "instructor": null, "status": "open"}]}, {"id": "72", "name": "Shlenker School", "state": "TX", "region": "Houston", "city": "Houston", "address": "5600 N. Braeswood Blvd.", "zip": "77096", "lat": 29.676097, "lon": -95.487633, "classes": [{"program": "Young Architects & Builders", "course": "Course", "instructor": null, "status": "open"}, {"program": "Drawing", "course": "Sketch Studio", "instructor": null, "status": "open"}, {"program": "Little Doctors", "course": "Course", "instructor": null, "status": "open"}]}, {"id": "2152", "name": "Jack Segal Academy of Beth Yeshurun", "state": "TX", "region": "Houston", "city": "Houston", "address": "4525 Beechnut", "zip": "77096", "lat": 29.6890948, "lon": -95.4529966, "classes": [{"program": "3D Printing", "course": "Start+", "instructor": null, "status": "open"}, {"program": "Magic", "course": "Explorers", "instructor": null, "status": "open"}, {"program": "Little Doctors", "course": "Course", "instructor": null, "status": "open"}, {"program": "Zumba", "course": "Kids", "instructor": null, "status": "open"}]}, {"id": "2662", "name": "Evelyn Rubenstein Jewish Community Center of Houston (Elementary Campus)", "state": "TX", "region": "Houston", "city": "Houston", "address": "5601 S Braeswood Blvd", "zip": "77096", "lat": 29.6802926, "lon": -95.4688088, "classes": [{"program": "Makers Club", "course": "Course", "instructor": null, "status": "open"}, {"program": "Wacky Science", "course": "Course", "instructor": null, "status": "open"}, {"program": "Makers Club", "course": "Course", "instructor": null, "status": "open"}, {"program": "Wacky Science", "course": "Course", "instructor": null, "status": "open"}]}];
+
+function siteHasOpen(s){ return s.classes.some(c => c.status === 'open'); }
+function siteAllFilled(s){ return s.classes.every(c => c.status === 'filled'); }
+
+// ---- MAP ----
+const map = L.map('map', { scrollWheelZoom: true }).setView([29.5, -90], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors',
+  maxZoom: 19
+}).addTo(map);
+
+const bounds = [];
+DATA.forEach(s => {
+  const openCount = s.classes.filter(c => c.status === 'open').length;
+  const filledCount = s.classes.length - openCount;
+  let color = '#37c977';
+  if (openCount > 0 && filledCount > 0) color = '#ffb545';
+  else if (openCount > 0) color = '#ff6b5e';
+
+  const marker = L.circleMarker([s.lat, s.lon], {
+    radius: 8,
+    fillColor: color,
+    color: '#0f1420',
+    weight: 1.5,
+    fillOpacity: 0.9
+  }).addTo(map);
+
+  let popupHtml = `<div class="popup-title">${s.name}</div>`;
+  popupHtml += `<div class="popup-addr">${s.address}, ${s.city}, ${s.state} ${s.zip} &middot; ${s.region}</div>`;
+  s.classes.forEach(c => {
+    const statusTxt = c.status === 'open'
+      ? '<span style="color:#ff6b5e;font-weight:700;">OPEN</span>'
+      : `<span style="color:#37c977;">${c.instructor || 'Filled'}</span>`;
+    popupHtml += `<div class="popup-class"><b>${c.program}</b>${c.course ? ' — ' + c.course : ''} · ${statusTxt}</div>`;
+  });
+  marker.bindPopup(popupHtml, { maxWidth: 320 });
+  bounds.push([s.lat, s.lon]);
+});
+if (bounds.length) map.fitBounds(bounds, { padding: [20,20] });
+
+// ---- LIST ----
+function renderList(){
+  const q = document.getElementById('searchBox').value.toLowerCase();
+  const stateF = document.getElementById('stateFilter').value;
+  const statusF = document.getElementById('statusFilter').value;
+
+  // group by region+state
+  const groups = {};
+  DATA.forEach(s => {
+    if (stateF && s.state !== stateF) return;
+    if (statusF === 'open' && !siteHasOpen(s)) return;
+    if (statusF === 'filled' && !siteAllFilled(s)) return;
+
+    const searchable = [s.name, s.city, s.region, s.state, ...s.classes.map(c => c.program + ' ' + (c.course||''))].join(' ').toLowerCase();
+    if (q && !searchable.includes(q)) return;
+
+    const key = s.region + '|' + s.state;
+    groups[key] = groups[key] || [];
+    groups[key].push(s);
+  });
+
+  const keys = Object.keys(groups).sort((a,b) => a.localeCompare(b));
+  const main = document.getElementById('mainList');
+  if (keys.length === 0) {
+    main.innerHTML = '<p style="color:var(--muted);margin-top:30px;">No sites match your filters.</p>';
+    return;
+  }
+
+  let out = '';
+  keys.forEach(key => {
+    const [region, state] = key.split('|');
+    const sites = groups[key].sort((a,b) => a.name.localeCompare(b.name));
+    const openTotal = sites.reduce((n,s) => n + s.classes.filter(c=>c.status==='open').length, 0);
+    const filledTotal = sites.reduce((n,s) => n + s.classes.filter(c=>c.status==='filled').length, 0);
+
+    out += `<div class="region-block">
+      <div class="region-title">${region} <span class="state-tag">${state}</span>
+      <span class="count">${sites.length} site${sites.length!==1?'s':''} · ${openTotal} open · ${filledTotal} filled</span></div>
+      <div class="site-grid">`;
+
+    sites.forEach(s => {
+      const hasOpen = siteHasOpen(s);
+      out += `<div class="site-card ${hasOpen ? '' : 'no-open'}">
+        <div class="site-name">📍 ${s.name}</div>
+        <div class="site-loc">${s.city}, ${s.state} &middot; ${s.address} ${s.zip}</div>`;
+
+      const openClasses = s.classes.filter(c => c.status === 'open');
+      const filledClasses = s.classes.filter(c => c.status === 'filled');
+
+      openClasses.forEach(c => {
+        out += `<div class="class-row"><span class="prog">📘 ${c.program}</span>${c.course ? ' — ' + c.course : ''}<span class="badge open">OPEN</span></div>`;
+      });
+      if (openClasses.length === 0) {
+        out += `<div class="no-open-note">No open placements — fully staffed (${filledClasses.length} class${filledClasses.length!==1?'es':''})</div>`;
+      } else if (filledClasses.length > 0) {
+        out += `<div class="class-row filled">+ ${filledClasses.length} filled class${filledClasses.length!==1?'es':''} at this site</div>`;
+      }
+      out += `</div>`;
+    });
+
+    out += `</div></div>`;
+  });
+
+  main.innerHTML = out;
+}
+renderList();
+</script>
+</body>
+</html>
