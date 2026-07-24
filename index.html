@@ -186,7 +186,42 @@
   .popup-addr { font-size:11px; color: var(--muted); margin-bottom:6px; }
   .popup-class { font-size:11.5px; padding:2px 0; }
 
-  .combo-search-wrap { position: relative; margin-left: auto; }
+  .addr-search-wrap { position: relative; margin-left: auto; display:flex; align-items:center; gap:6px; }
+  .addr-search-wrap input {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    width: 220px;
+  }
+  .addr-search-wrap button {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    padding: 6.5px 14px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .addr-search-wrap button:hover { opacity: 0.9; }
+  .addr-search-wrap button:disabled { opacity: 0.6; cursor: default; }
+  .addr-search-status {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+  }
+  .addr-search-status.error { color: var(--open); }
+  .address-marker { font-size: 28px; line-height: 1; cursor: pointer; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
+  .combo-search-wrap { position: relative; margin-left: 10px; }
   .combo-search-wrap input {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -256,6 +291,11 @@
   <span><span class="dot mix"></span>Mixed program (some open)</span>
   <span><span class="dot filled"></span>Fully staffed</span>
   <span><span class="dot instructor"></span>Instructor (approx. by zip)</span>
+  <div class="addr-search-wrap">
+    <input type="text" id="addressSearch" placeholder="Search any address..." onkeydown="if(event.key==='Enter'){event.preventDefault();runAddressSearch();}">
+    <button type="button" id="addressSearchBtn" onclick="runAddressSearch()">Go</button>
+    <div class="addr-search-status" id="addrSearchStatus"></div>
+  </div>
   <div class="combo-search-wrap">
     <input type="text" id="comboSearch" placeholder="Find a site or instructor..." oninput="comboSearchRun()" onfocus="comboSearchRun()">
     <div class="combo-results" id="comboResults"></div>
@@ -397,6 +437,62 @@ INSTRUCTORS.forEach(ins => {
   const marker = new maplibregl.Marker({ element: el }).setLngLat([ins.lon, ins.lat]).setPopup(popup).addTo(map);
   instructorMarkers.push(marker);
 });
+
+// ---- ADDRESS SEARCH ----
+let addressMarker = null;
+async function runAddressSearch(){
+  const input = document.getElementById('addressSearch');
+  const btn = document.getElementById('addressSearchBtn');
+  const status = document.getElementById('addrSearchStatus');
+  const q = input.value.trim();
+  status.textContent = '';
+  status.classList.remove('error');
+  if (!q) return;
+
+  btn.disabled = true;
+  btn.textContent = '...';
+  status.textContent = 'Searching…';
+
+  try {
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 8000);
+    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q);
+    const res = await fetch(url, { signal: ctrl.signal, headers: { 'Accept-Language': 'en' } });
+    clearTimeout(timeout);
+    const results = await res.json();
+
+    if (!results || results.length === 0) {
+      status.textContent = 'No results found for “' + q + '”';
+      status.classList.add('error');
+      return;
+    }
+
+    const r = results[0];
+    const lat = parseFloat(r.lat);
+    const lon = parseFloat(r.lon);
+
+    if (addressMarker) addressMarker.remove();
+
+    const el = document.createElement('div');
+    el.className = 'address-marker';
+    el.textContent = '📍';
+
+    const popup = new maplibregl.Popup({ maxWidth: '280px', offset: 24 }).setHTML(
+      '<div class="popup-title">Searched location</div><div class="popup-addr">' + r.display_name + '</div>'
+    );
+
+    addressMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([lon, lat]).setPopup(popup).addTo(map);
+    map.flyTo({ center: [lon, lat], zoom: 16, essential: true });
+    addressMarker.togglePopup();
+    status.textContent = '';
+  } catch (e) {
+    status.textContent = 'Search failed — try again';
+    status.classList.add('error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Go';
+  }
+}
 
 function comboSearchRun(){
   const box = document.getElementById('comboSearch');
