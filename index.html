@@ -180,6 +180,8 @@
   .maplibregl-ctrl-attrib a { color: var(--muted) !important; }
   .site-marker { width:16px; height:16px; border-radius:50%; border:1.5px solid #0f1420; cursor:pointer; box-shadow: 0 0 0 1px rgba(0,0,0,0.3); }
   .instructor-marker { width:10px; height:10px; border-radius:50%; border:1px solid #0f1420; background:#4fd1ff; opacity:0.85; cursor:pointer; }
+  .style-toggle-ctrl button { width:29px; height:29px; font-size:15px; background:#fff; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .style-toggle-ctrl button:hover { background:#f2f2f2; }
   .popup-title { font-weight:700; font-size:13px; margin-bottom:2px; }
   .popup-addr { font-size:11px; color: var(--muted); margin-bottom:6px; }
   .popup-class { font-size:11.5px; padding:2px 0; }
@@ -290,13 +292,70 @@ function siteHasOpen(s){ return s.classes.some(c => c.status === 'open'); }
 function siteAllFilled(s){ return s.classes.every(c => c.status === 'filled'); }
 
 // ---- MAP ----
+const OFM_STYLES = {
+  light: 'https://tiles.openfreemap.org/styles/bright',
+  dark: 'https://tiles.openfreemap.org/styles/dark'
+};
+let currentStyleKey = 'light';
+
 const map = new maplibregl.Map({
   container: 'map',
-  style: 'https://tiles.openfreemap.org/styles/bright',
+  style: OFM_STYLES[currentStyleKey],
   center: [-90, 29.5],
   zoom: 5
 });
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+class StyleToggleControl {
+  onAdd(mapInstance) {
+    this._map = mapInstance;
+    this._container = document.createElement('div');
+    this._container.className = 'maplibregl-ctrl maplibregl-ctrl-group style-toggle-ctrl';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.title = 'Switch light / dark map style';
+    btn.textContent = currentStyleKey === 'light' ? '\ud83c\udf19' : '\u2600\ufe0f';
+    btn.addEventListener('click', () => {
+      currentStyleKey = currentStyleKey === 'light' ? 'dark' : 'light';
+      btn.textContent = currentStyleKey === 'light' ? '\ud83c\udf19' : '\u2600\ufe0f';
+      mapInstance.setStyle(OFM_STYLES[currentStyleKey]);
+    });
+    this._container.appendChild(btn);
+    return this._container;
+  }
+  onRemove() {
+    this._container.parentNode.removeChild(this._container);
+    this._map = undefined;
+  }
+}
+map.addControl(new StyleToggleControl(), 'bottom-right');
+
+// Deep-zoom detail overlay: OpenFreeMap's public vector tiles cap at zoom 14, so past that
+// point they just scale up rather than adding new detail. To match Leaflet's dense
+// business/school labeling when fully zoomed in, layer the classic OSM raster tiles on
+// top starting at zoom 15 (re-added after every style switch since setStyle clears layers).
+function addDetailOverlay() {
+  if (map.getSource('osm-raster')) return;
+  map.addSource('osm-raster', {
+    type: 'raster',
+    tiles: [
+      'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+    ],
+    tileSize: 256,
+    maxzoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  });
+  map.addLayer({
+    id: 'osm-raster-detail',
+    type: 'raster',
+    source: 'osm-raster',
+    minzoom: 15,
+    paint: { 'raster-opacity': 1 }
+  });
+}
+map.on('style.load', addDetailOverlay);
 
 const bounds = new maplibregl.LngLatBounds();
 const siteMarkers = [];
