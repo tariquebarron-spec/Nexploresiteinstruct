@@ -173,6 +173,25 @@
   .badge.open { background: rgba(255,107,94,0.18); color: var(--open); }
   .badge.filled { background: rgba(55,201,119,0.18); color: var(--filled); }
   .no-open-note { font-size: 12px; color: var(--muted); font-style: italic; }
+  .filled-hover-wrap { position: relative; cursor: pointer; }
+  .filled-hover-wrap .hint { text-decoration: underline dotted; color: var(--muted); font-size: 10.5px; margin-left: 4px; }
+  .filled-details {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-top: 4px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+  }
+  .filled-hover-wrap:hover .filled-details { display: block; }
+  .filled-detail-row { font-size: 11.5px; padding: 4px 0; border-top: 1px dashed var(--border); }
+  .filled-detail-row:first-child { border-top: none; }
   .maplibregl-popup-content { background: var(--panel); color: var(--text); border-radius: 10px; padding: 12px 14px; }
   .maplibregl-popup-tip { border-top-color: var(--panel) !important; border-bottom-color: var(--panel) !important; }
   .maplibregl-popup-close-button { color: var(--muted); font-size: 16px; }
@@ -636,10 +655,16 @@ function renderList(){
         const timeTxt = c.time ? ` <span style="color:var(--muted);font-size:11px;">(${c.time})</span>` : '';
         out += `<div class="class-row"><span class="prog">📘 ${c.program}</span>${c.course ? ' — ' + c.course : ''}${timeTxt}<span class="badge open">OPEN</span></div>`;
       });
-      if (openClasses.length === 0) {
-        out += `<div class="no-open-note">No open placements — fully staffed (${filledClasses.length} class${filledClasses.length!==1?'es':''})</div>`;
+
+      const filledDetailsHtml = filledClasses.map(c => {
+        const timeTxt = c.time ? ` <span style="color:var(--muted);">(${c.time})</span>` : '';
+        return `<div class="filled-detail-row"><b>${c.program}</b>${c.course ? ' — ' + c.course : ''}${timeTxt} · <span style="color:var(--filled);">${c.instructor || 'Filled'}</span></div>`;
+      }).join('');
+
+      if (openClasses.length === 0 && filledClasses.length > 0) {
+        out += `<div class="filled-hover-wrap"><div class="no-open-note">No open placements — fully staffed (${filledClasses.length} class${filledClasses.length!==1?'es':''})<span class="hint">hover for details</span></div><div class="filled-details">${filledDetailsHtml}</div></div>`;
       } else if (filledClasses.length > 0) {
-        out += `<div class="class-row filled">+ ${filledClasses.length} filled class${filledClasses.length!==1?'es':''} at this site</div>`;
+        out += `<div class="filled-hover-wrap"><div class="class-row filled">+ ${filledClasses.length} filled class${filledClasses.length!==1?'es':''} at this site<span class="hint">hover for details</span></div><div class="filled-details">${filledDetailsHtml}</div></div>`;
       }
       out += `</div>`;
     });
