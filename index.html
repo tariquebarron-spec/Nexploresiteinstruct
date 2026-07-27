@@ -142,6 +142,7 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 14px 16px;
+    position: relative;
   }
   .site-card.no-open { opacity: 0.55; }
   .site-name {
@@ -173,7 +174,6 @@
   .badge.open { background: rgba(255,107,94,0.18); color: var(--open); }
   .badge.filled { background: rgba(55,201,119,0.18); color: var(--filled); }
   .no-open-note { font-size: 12px; color: var(--muted); font-style: italic; }
-  .filled-hover-wrap { position: relative; cursor: pointer; }
   .filled-hover-wrap .hint { text-decoration: underline dotted; color: var(--muted); font-size: 10.5px; margin-left: 4px; }
   .filled-details {
     display: none;
@@ -644,12 +644,13 @@ function renderList(){
 
     sites.forEach(s => {
       const hasOpen = siteHasOpen(s);
-      out += `<div class="site-card ${hasOpen ? '' : 'no-open'}">
-        <div class="site-name">📍 ${s.name}</div>
-        <div class="site-loc">${s.city}, ${s.state} &middot; ${s.address} ${s.zip}</div>`;
-
       const openClasses = s.classes.filter(c => c.status === 'open');
       const filledClasses = s.classes.filter(c => c.status === 'filled');
+      const cardClasses = ['site-card', hasOpen ? '' : 'no-open', filledClasses.length > 0 ? 'filled-hover-wrap' : ''].filter(Boolean).join(' ');
+
+      out += `<div class="${cardClasses}">
+        <div class="site-name">📍 ${s.name}</div>
+        <div class="site-loc">${s.city}, ${s.state} &middot; ${s.address} ${s.zip}</div>`;
 
       openClasses.forEach(c => {
         const timeTxt = c.time ? ` <span style="color:var(--muted);font-size:11px;">(${c.time})</span>` : '';
@@ -662,9 +663,12 @@ function renderList(){
       }).join('');
 
       if (openClasses.length === 0 && filledClasses.length > 0) {
-        out += `<div class="filled-hover-wrap"><div class="no-open-note">No open placements — fully staffed (${filledClasses.length} class${filledClasses.length!==1?'es':''})<span class="hint">hover for details</span></div><div class="filled-details">${filledDetailsHtml}</div></div>`;
+        out += `<div class="no-open-note">No open placements — fully staffed (${filledClasses.length} class${filledClasses.length!==1?'es':''})<span class="hint">hover for details</span></div>`;
       } else if (filledClasses.length > 0) {
-        out += `<div class="filled-hover-wrap"><div class="class-row filled">+ ${filledClasses.length} filled class${filledClasses.length!==1?'es':''} at this site<span class="hint">hover for details</span></div><div class="filled-details">${filledDetailsHtml}</div></div>`;
+        out += `<div class="class-row filled">+ ${filledClasses.length} filled class${filledClasses.length!==1?'es':''} at this site<span class="hint">hover for details</span></div>`;
+      }
+      if (filledClasses.length > 0) {
+        out += `<div class="filled-details">${filledDetailsHtml}</div>`;
       }
       out += `</div>`;
     });
