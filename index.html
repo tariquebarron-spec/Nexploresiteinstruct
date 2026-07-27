@@ -420,8 +420,22 @@ DATA.forEach(s => {
     popupHtml += `<div class="popup-class"><b>${c.program}</b>${c.course ? ' — ' + c.course : ''}${timeTxt} · ${statusTxt}</div>`;
   });
 
-  const popup = new maplibregl.Popup({ maxWidth: '320px', offset: 14 }).setHTML(popupHtml);
+  const popup = new maplibregl.Popup({ maxWidth: '320px', offset: 14, closeButton: false }).setHTML(popupHtml);
   const marker = new maplibregl.Marker({ element: el }).setLngLat([s.lon, s.lat]).setPopup(popup).addTo(map);
+
+  let hoverCloseTimer = null;
+  function cancelSiteClose(){ if (hoverCloseTimer) { clearTimeout(hoverCloseTimer); hoverCloseTimer = null; } }
+  function scheduleSiteClose(){ hoverCloseTimer = setTimeout(() => { if (popup.isOpen()) marker.togglePopup(); }, 200); }
+  el.addEventListener('mouseenter', () => { cancelSiteClose(); if (!popup.isOpen()) marker.togglePopup(); });
+  el.addEventListener('mouseleave', scheduleSiteClose);
+  popup.on('open', () => {
+    const popupEl = popup.getElement();
+    if (popupEl) {
+      popupEl.addEventListener('mouseenter', cancelSiteClose);
+      popupEl.addEventListener('mouseleave', scheduleSiteClose);
+    }
+  });
+
   bounds.extend([s.lon, s.lat]);
   siteMarkers.push(marker);
 });
